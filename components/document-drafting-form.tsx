@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -50,6 +50,8 @@ export default function DocumentDraftingForm() {
   const [apiResponse, setApiResponse] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedDocument, setEditedDocument] = useState<string>('');
+  const [streamedText, setStreamedText] = useState<string>('');
+  const [isStreaming, setIsStreaming] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -61,9 +63,27 @@ export default function DocumentDraftingForm() {
     },
   });
 
+  const streamText = (text: string) => {
+    setIsStreaming(true);
+    setStreamedText('');
+    let index = 0;
+    
+    const interval = setInterval(() => {
+      if (index < text.length) {
+        setStreamedText(prev => prev + text[index]);
+        index++;
+      } else {
+        clearInterval(interval);
+        setIsStreaming(false);
+        setApiResponse(text);
+      }
+    }, 10); // Reduced from 30ms to 10ms for faster streaming
+  };
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     setApiResponse(null);
+    setStreamedText('');
     
     try {
       const response = await fetch('http://localhost:8000/generate-document', {
@@ -81,14 +101,14 @@ export default function DocumentDraftingForm() {
       const data = await response.json();
       // For testing, always use the sample text
       const sampleText = `Generated ${values.documentType} Document\n\nPurpose: ${values.purpose}\n\nDetails:\n${values.details}\n\nAdditional Requirements:\n${values.additionalRequirements || 'None'}`;
-      setApiResponse(sampleText);
+      streamText(sampleText);
       setIsSuccess(true);
       toast.success('Document generated successfully!');
     } catch (error) {
       console.error('Error generating document:', error);
       // Even if API fails, show sample text for testing
       const sampleText = `Generated ${values.documentType} Document\n\nPurpose: ${values.purpose}\n\nDetails:\n${values.details}\n\nAdditional Requirements:\n${values.additionalRequirements || 'None'}`;
-      setApiResponse(sampleText);
+      streamText(sampleText);
       setIsSuccess(true);
       toast.success('Document generated successfully!');
     } finally {
@@ -108,10 +128,16 @@ export default function DocumentDraftingForm() {
   };
 
   const handleDownload = () => {
+    const now = new Date();
+    const date = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    const time = now.toTimeString().split(' ')[0].replace(/:/g, '-'); // HH-MM-SS
+    const documentType = form.getValues('documentType');
+    const filename = `${documentType}_${date}_${time}.txt`;
+
     const element = document.createElement('a');
     const file = new Blob([apiResponse || ''], {type: 'text/plain'});
     element.href = URL.createObjectURL(file);
-    element.download = 'generated-document.txt';
+    element.download = filename;
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
@@ -127,15 +153,17 @@ export default function DocumentDraftingForm() {
           </svg>
         </div>
         <h2 className="text-2xl font-bold mb-4">Document Generated!</h2>
-        <div className="bg-muted p-4 rounded-lg mb-6">
+        <div className="bg-muted p-4 rounded-lg mb-6 max-h-[500px] overflow-y-auto">
           {isEditing ? (
             <Textarea
               value={editedDocument}
               onChange={(e) => setEditedDocument(e.target.value)}
-              className="min-h-[300px] font-mono text-sm"
+              className="min-h-[300px] font-mono text-sm w-full"
             />
+          ) : isStreaming ? (
+            <pre className="whitespace-pre-wrap text-sm break-words">{streamedText}</pre>
           ) : (
-            <pre className="whitespace-pre-wrap text-sm">{apiResponse}</pre>
+            <pre className="whitespace-pre-wrap text-sm break-words">{apiResponse}</pre>
           )}
         </div>
         <div className="flex gap-4 justify-center">
@@ -144,7 +172,15 @@ export default function DocumentDraftingForm() {
           ) : (
             <Button onClick={handleEdit}>Edit Document</Button>
           )}
-          <Button onClick={() => setIsSuccess(false)}>Generate Another Document</Button>
+          <Button onClick={() => {
+            setIsSuccess(false);
+            form.reset();
+            setApiResponse(null);
+            setStreamedText('');
+            setIsEditing(false);
+            setEditedDocument('');
+            setIsStreaming(false);
+          }}>Generate Another Document</Button>
           <Button variant="outline" onClick={handleDownload}>Download Document</Button>
         </div>
       </div>
