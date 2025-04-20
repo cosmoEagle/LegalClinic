@@ -2,19 +2,45 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { Menu, X, Scale, FileText, MessageSquare, LogIn, UserPlus, LogOut } from 'lucide-react';
+import { Menu, X, Scale, FileText, MessageSquare, LogIn, UserPlus, LogOut, User } from 'lucide-react';
 import ThemeToggle from './theme-toggle';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+// Create a custom event for login state changes
+const LOGIN_STATE_CHANGED = 'loginStateChanged';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  useEffect(() => {
-    // Check if user is logged in by looking for token in localStorage
+  // Function to check login state
+  const checkLoginState = () => {
     const token = localStorage.getItem('token');
     setIsLoggedIn(!!token);
+  };
+
+  useEffect(() => {
+    // Initial check
+    checkLoginState();
+    
+    // Listen for custom login state change event
+    const handleLoginStateChange = () => {
+      checkLoginState();
+    };
+    
+    window.addEventListener(LOGIN_STATE_CHANGED, handleLoginStateChange);
+    
+    return () => {
+      window.removeEventListener(LOGIN_STATE_CHANGED, handleLoginStateChange);
+    };
   }, []);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
@@ -23,7 +49,8 @@ export default function Navbar() {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    setIsLoggedIn(false);
+    // Dispatch custom event to notify about login state change
+    window.dispatchEvent(new Event(LOGIN_STATE_CHANGED));
     window.location.href = '/'; // Redirect to home page
   };
 
@@ -60,15 +87,26 @@ export default function Navbar() {
             
             {/* Auth buttons */}
             {isLoggedIn ? (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleLogout}
-                className="flex items-center gap-1"
-              >
-                <LogOut className="h-4 w-4" />
-                Logout
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-full">
+                    <User className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile">My Profile</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings">Settings</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-500">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <div className="flex items-center gap-2">
                 <Link href="/login">
@@ -99,6 +137,28 @@ export default function Navbar() {
 
           {/* Mobile menu button */}
           <div className="flex items-center md:hidden">
+            {isLoggedIn && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-full mr-2">
+                    <User className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile">My Profile</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings">Settings</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-500">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             <ThemeToggle />
             <Button
               variant="ghost"
@@ -132,15 +192,27 @@ export default function Navbar() {
           
           {/* Auth buttons for mobile */}
           {isLoggedIn ? (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-1 mt-2"
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </Button>
+            <div className="space-y-2 mt-2">
+              <Link href="/profile" onClick={closeMenu}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full flex items-center justify-center gap-1"
+                >
+                  <User className="h-4 w-4" />
+                  My Profile
+                </Button>
+              </Link>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-1 text-red-500"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </Button>
+            </div>
           ) : (
             <div className="flex flex-col gap-2 mt-2">
               <Link href="/login" onClick={closeMenu}>

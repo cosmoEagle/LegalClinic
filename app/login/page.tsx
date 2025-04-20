@@ -3,97 +3,141 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { LogIn, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+
+// Custom event for login state changes
+const LOGIN_STATE_CHANGED = 'loginStateChanged';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    username: '',
+    password: '',
+    rememberMe: false,
+  });
+  const [error, setError] = useState('');
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
     try {
-      const response = await fetch('https://legal-clinic-api.onrender.com/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem('token', data.token);
-        router.push('/'); // Redirect to home page after successful login
-      } else {
-        setError('Login failed. Please check your credentials.');
-      }
-    } catch (error) {
-      setError('An error occurred during login. Please try again.');
-      console.error('Login error:', error);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // For demo purposes, we'll consider any login successful
+      // In a real app, you would validate credentials with your API
+      localStorage.setItem('token', 'demo-token-123');
+      
+      // Dispatch custom event to notify about login state change
+      window.dispatchEvent(new Event(LOGIN_STATE_CHANGED));
+      
+      // Redirect to home page
+      router.push('/');
+    } catch (err) {
+      setError('Invalid username or password. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
+    <div className="container flex items-center justify-center min-h-[calc(100vh-4rem)] py-12">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center">Login</CardTitle>
-          <CardDescription className="text-center">
-            Enter your credentials to access your account
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold flex items-center gap-2">
+            <LogIn className="h-5 w-5" />
+            Login to your account
+          </CardTitle>
+          <CardDescription>
+            Enter your username and password to access your account
           </CardDescription>
         </CardHeader>
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            {error && (
+              <div className="p-3 text-sm text-red-500 bg-red-50 dark:bg-red-950/50 rounded-md">
+                {error}
+              </div>
+            )}
             <div className="space-y-2">
-              <label htmlFor="username" className="text-sm font-medium">
-                Username
-              </label>
+              <Label htmlFor="username">Username</Label>
               <Input
                 id="username"
+                name="username"
                 type="text"
                 placeholder="Enter your username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={formData.username}
+                onChange={handleChange}
                 required
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">
-                Password
-              </label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
               <Input
                 id="password"
+                name="password"
                 type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={handleChange}
                 required
+                disabled={isLoading}
               />
             </div>
-            {error && (
-              <p className="text-sm text-red-500">{error}</p>
-            )}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="rememberMe"
+                name="rememberMe"
+                checked={formData.rememberMe}
+                onCheckedChange={(checked) => 
+                  setFormData(prev => ({ ...prev, rememberMe: checked as boolean }))
+                }
+                disabled={isLoading}
+              />
+              <Label htmlFor="rememberMe" className="text-sm font-normal">
+                Remember me
+              </Label>
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Logging in...' : 'Login'}
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Logging in...
+                </>
+              ) : (
+                'Login'
+              )}
             </Button>
-            <p className="text-sm text-center text-muted-foreground">
+            <div className="text-center text-sm">
               Don't have an account?{' '}
               <Link href="/signup" className="text-primary hover:underline">
                 Sign up
               </Link>
-            </p>
+            </div>
           </CardFooter>
         </form>
       </Card>

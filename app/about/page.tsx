@@ -35,6 +35,7 @@ const teamMembers: TeamMember[] = [
     image: 'https://images.pexels.com/photos/3776932/pexels-photo-3776932.jpeg?auto=compress&cs=tinysrgb&w=800',
     // bio: 'Michael brings 12 years of legal practice experience, specializing in property law and civil litigation. He oversees our document drafting services.',
     social: {
+      github: 'https://github.com',
       linkedin: 'https://linkedin.com',
       email: 'michael@legalclinic.com'
     }
@@ -56,6 +57,7 @@ const teamMembers: TeamMember[] = [
     image: 'https://images.pexels.com/photos/5792641/pexels-photo-5792641.jpeg?auto=compress&cs=tinysrgb&w=800',
     // bio: 'James ensures our platform provides accurate, up-to-date legal information and oversees the quality of our automated responses.',
     social: {
+      github: 'https://github.com',
       linkedin: 'https://linkedin.com',
       email: 'james@legalclinic.com'
     }
