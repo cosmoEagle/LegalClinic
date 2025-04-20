@@ -5,8 +5,25 @@ import { ChatMessage } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Send, RefreshCw } from 'lucide-react';
+import { Loader2, Send, RefreshCw, History } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
+interface ChatSession {
+  session_id: string;
+  started_at: string;
+  messages: {
+    role: string;
+    chat: string;
+    timestamp: string;
+  }[];
+}
 
 export default function LegalChatInterface() {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -20,6 +37,8 @@ export default function LegalChatInterface() {
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -45,41 +64,63 @@ export default function LegalChatInterface() {
     setInputMessage('');
     setIsTyping(true);
 
-    // Simulate API response delay
-    setTimeout(() => {
-      const responseContent = generateResponse(userMessage.content);
+    try {
+      console.log('Sending request to API:', userMessage.content);
+      
+      // Call the API endpoint with the exact format specified
+      const response = await fetch('http://192.168.190.58:8000/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          query: userMessage.content
+        }),
+      });
+
+      console.log('API response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+
+      // Parse the JSON response
+      const data = await response.json();
+      console.log('API response data:', data);
+      
+      // Extract the response field from the JSON
+      const answer = data.response;
+      
+      if (!answer) {
+        throw new Error('Response field missing from API response');
+      }
+      
       const assistantMessage: ChatMessage = {
         id: uuidv4(),
         sender: 'assistant',
-        content: responseContent,
+        content: answer,
         timestamp: new Date(),
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+    } catch (error: any) {
+      console.error('Error getting response:', error);
+      
+      // Show detailed error message to user
+      const errorMessage: ChatMessage = {
+        id: uuidv4(),
+        sender: 'assistant',
+        content: `I apologize, but I encountered an error while processing your request: ${error.message || 'Unknown error'}. Please try again later or contact support.`,
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
-  };
-
-  const generateResponse = (userInput: string): string => {
-    const input = userInput.toLowerCase();
-    
-    if (input.includes('motor vehicle') || input.includes('accident') || input.includes('mva')) {
-      return 'For Motor Vehicle Act inquiries, I would need specific details about your situation. Generally, in case of accidents, you should: \n\n1. File an FIR immediately\n2. Inform your insurance company\n3. Document all damages with photographs\n4. Maintain medical reports if there are injuries\n5. Consult with a motor vehicle accident specialist';
-    } 
-    
-    if (input.includes('sale deed') || input.includes('property') || input.includes('transfer')) {
-      return 'Regarding property transfers and sale deeds, here are the key points to consider:\n\n1. Verify property ownership and title clarity\n2. Ensure all property papers are in order\n3. Calculate and arrange proper stamp duty payment\n4. Draft a comprehensive sale deed\n5. Register the deed with local authorities\n\nWould you like more specific information about any of these steps?';
     }
-    
-    if (input.includes('bail') || input.includes('arrest')) {
-      return 'For bail-related matters, here\'s what you need to know:\n\n1. Regular Bail: Applied when a person is arrested\n2. Anticipatory Bail: Applied before arrest\n3. Required documents: FIR copy, arrest memo, medical reports\n4. Bail conditions vary by offense severity\n\nPlease provide more details about your specific situation for more accurate guidance.';
-    }
-    
-    if (input.includes('rti') || input.includes('right to information')) {
-      return 'To file an RTI application:\n\n1. Identify the correct public authority\n2. Draft a clear, specific question\n3. Pay the prescribed fee (usually ₹10)\n4. Submit to the Public Information Officer\n5. Wait for 30 days for a response\n\nWould you like help drafting an RTI application?';
-    }
-
-    return 'I understand you have a legal query. To provide accurate assistance, could you please provide more specific details about your situation? I can help with:\n\n- Motor Vehicle Act cases\n- Property matters\n- Bail proceedings\n- RTI applications\n- General legal documentation';
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -94,6 +135,32 @@ export default function LegalChatInterface() {
     setTimeout(() => setIsConnected(true), 1000);
   };
 
+  const fetchChatHistory = async () => {
+    setIsLoadingHistory(true);
+    try {
+      const response = await fetch('https://legal-clinic-api.onrender.com/chat/sessions/user');
+      if (!response.ok) {
+        throw new Error('Failed to fetch chat history');
+      }
+      const data = await response.json();
+      setChatSessions(data.sessions);
+    } catch (error) {
+      console.error('Error fetching chat history:', error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  const loadSession = (session: ChatSession) => {
+    const formattedMessages: ChatMessage[] = session.messages.map(msg => ({
+      id: uuidv4(),
+      sender: msg.role === 'user' ? 'user' : 'assistant',
+      content: msg.chat,
+      timestamp: new Date(msg.timestamp),
+    }));
+    setMessages(formattedMessages);
+  };
+
   return (
     <div className="flex flex-col h-[600px] bg-card border border-border rounded-lg shadow-sm">
       {/* Chat Header */}
@@ -102,15 +169,65 @@ export default function LegalChatInterface() {
           <div className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
           <span className="font-medium">Legal Assistant</span>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={reconnect}
-          disabled={!isConnected}
-          className="h-8 w-8"
-        >
-          <RefreshCw className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-2">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={fetchChatHistory}
+                className="h-8 w-8"
+              >
+                <History className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Chat History</DialogTitle>
+              </DialogHeader>
+              <div className="mt-4 max-h-[400px] overflow-y-auto">
+                {isLoadingHistory ? (
+                  <div className="flex justify-center p-4">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : chatSessions.length === 0 ? (
+                  <p className="text-center text-muted-foreground p-4">No chat history available</p>
+                ) : (
+                  <div className="space-y-4">
+                    {chatSessions.map((session) => (
+                      <div
+                        key={session.session_id}
+                        className="border rounded-lg p-4 hover:bg-muted cursor-pointer"
+                        onClick={() => loadSession(session)}
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">
+                            Session {new Date(session.started_at).toLocaleDateString()}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {session.messages.length} messages
+                          </span>
+                        </div>
+                        <div className="mt-2 text-sm text-muted-foreground">
+                          {session.messages[0]?.chat.substring(0, 100)}...
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={reconnect}
+            disabled={!isConnected}
+            className="h-8 w-8"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Chat Messages */}
