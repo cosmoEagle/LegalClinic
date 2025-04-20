@@ -86,12 +86,14 @@ export default function DocumentDraftingForm() {
     setStreamedText('');
     
     try {
-      const response = await fetch('http://localhost:8000/generate-document', {
+      const response = await fetch('http://192.168.190.248:8000/doc_gen', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+          details: values.details
+        }),
       });
 
       if (!response.ok) {
@@ -99,18 +101,13 @@ export default function DocumentDraftingForm() {
       }
 
       const data = await response.json();
-      // For testing, always use the sample text
-      const sampleText = `Generated ${values.documentType} Document\n\nPurpose: ${values.purpose}\n\nDetails:\n${values.details}\n\nAdditional Requirements:\n${values.additionalRequirements || 'None'}`;
-      streamText(sampleText);
+      streamText(data.response);
       setIsSuccess(true);
       toast.success('Document generated successfully!');
     } catch (error) {
       console.error('Error generating document:', error);
-      // Even if API fails, show sample text for testing
-      const sampleText = `Generated ${values.documentType} Document\n\nPurpose: ${values.purpose}\n\nDetails:\n${values.details}\n\nAdditional Requirements:\n${values.additionalRequirements || 'None'}`;
-      streamText(sampleText);
-      setIsSuccess(true);
-      toast.success('Document generated successfully!');
+      toast.error('Failed to generate document. Please try again.');
+      setIsSuccess(false);
     } finally {
       setIsSubmitting(false);
     }

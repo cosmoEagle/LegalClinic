@@ -59,6 +59,7 @@ export default function Navbar() {
     { name: 'Legal Questions', href: '/legal-questions' },
     { name: 'Document Drafting', href: '/document-drafting' },
     { name: 'Legal Chat', href: '/legal-chat' },
+    { name: 'Bail Advisory', href: '/bail-advisory' },
     { name: 'About', href: '/about' },
   ];
 

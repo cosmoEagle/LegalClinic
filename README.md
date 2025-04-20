@@ -9,10 +9,10 @@
   Brief description of the project
   
 ## Demo Video Link:
-  <a href="https://youtu.be/dQw4w9WgXcQ">https://youtu.be/dQw4w9WgXcQ</a>
+  <a href="https://drive.google.com/drive/folders/1vJXbxlshPBP6-qLEXNNso7bK-tCKKzKh?usp=sharing">Google Drive</a>
   
 ## Presentation Link:
-  <a href="https://bit.ly/hack36_24_ppt"> PPT link here </a>
+  <a href="https://drive.google.com/drive/folders/1vJXbxlshPBP6-qLEXNNso7bK-tCKKzKh?usp=sharing"> Google Drive </a>
   
   
 ## Table of Contents:
@@ -21,16 +21,18 @@
   1) Next JS
   2) Python
   3) Fast API
-  4) Generative AI
+  4) LlamaIndex
+  5) Langchain
   
 
 ## Contributors:
 
 Team Name: Code_Pirates
 
-* [Shashank Verma](https://github.com/shank03)
-* [Sanskar Omar](https://github.com/sanskaromar)
-* [Priyav Kaneria](https://github.com/priyavkaneria)
+* [Amartya Saran](https://github.com/amartya123-sudo)
+* [Shreesh Shukla](https://github.com/cosmoEagle)
+* [Dishant Kumar Soam](https://github.com/Dasoam)
+* [Shwet Gupta](https://github.com/shwet-0987)
 
 
 ### Made at:
